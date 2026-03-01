@@ -39,6 +39,7 @@ fn main() {
 
     // Platform-specific system libraries required by the Go runtime.
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
+    let target_env = env::var("CARGO_CFG_TARGET_ENV").unwrap_or_default();
     match target_os.as_str() {
         "linux" => {
             println!("cargo:rustc-link-lib=dylib=pthread");
@@ -52,10 +53,28 @@ fn main() {
             println!("cargo:rustc-link-lib=dylib=m");
             println!("cargo:rustc-link-lib=dylib=resolv");
         }
+        "windows" => {
+            println!("cargo:rustc-link-lib=dylib=ntdll");
+            println!("cargo:rustc-link-lib=dylib=ws2_32");
+            println!("cargo:rustc-link-lib=dylib=winmm");
+            println!("cargo:rustc-link-lib=dylib=userenv");
+
+            if target_env == "msvc" {
+                // Go's linker puts the runtime startup function into a .ctors section.
+                // GCC's linker processes .ctors automatically, but MSVC's does not.
+                // Compile a small C shim that bridges .ctors -> .CRT$XCU so the Go
+                // runtime initializes correctly when linked with MSVC.
+                println!("cargo:rustc-link-lib=legacy_stdio_definitions");
+                cc::Build::new()
+                    .file("rust/msvc_ctors.c")
+                    .compile("msvc_ctors");
+            }
+        }
         _ => {}
     }
 
     println!("cargo:rerun-if-changed=cmd/libtsgo/main.go");
     println!("cargo:rerun-if-changed=go.mod");
     println!("cargo:rerun-if-changed=go.sum");
+    println!("cargo:rerun-if-changed=rust/msvc_ctors.c");
 }
