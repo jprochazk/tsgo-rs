@@ -1,0 +1,42 @@
+[package]
+name = "tsgo"
+version = "0.1.0"
+edition = "2021"
+description = "Rust bindings to typescript-go"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/jprochazk/tsgo-rs"
+build = "rust/build.rs"
+
+# Everything Rust-specific lives under rust/ to avoid conflicts with the Go project.
+# The Go source is included so the crate is self-contained on crates.io.
+include = [
+  # Rust sources
+  "/rust/",
+  # Cargo build script & manifest
+  "/Cargo.toml",
+  "/Cargo.lock",
+  # Go cgo wrapper
+  "/cmd/libtsgo/",
+  # Go module files
+  "/go.mod",
+  "/go.sum",
+  # Go source (exclude tests and fourslash test infra)
+  "/internal/**/*.go",
+  "!/internal/**/*_test.go",
+  "!/internal/fourslash/",
+  # Embedded assets required by go:embed directives
+  "/internal/bundled/libs/",
+  "/internal/diagnostics/loc/",
+]
+
+[lib]
+path = "rust/src/lib.rs"
+
+[[test]]
+name = "integration"
+path = "rust/tests/integration.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
