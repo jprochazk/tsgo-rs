@@ -1,3 +1,9 @@
+# tsgo-rs
+
+Rust bindings to a small subset of the typescript-go compiler.
+
+Original README below:
+
 # TypeScript 7
 
 [Not sure what this is? Read the announcement post!](https://devblogs.microsoft.com/typescript/typescript-native-port/)
