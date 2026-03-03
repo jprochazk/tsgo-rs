@@ -3,6 +3,26 @@ use std::path::PathBuf;
 use std::process::Command;
 
 fn main() {
+    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
+    let target_env = env::var("CARGO_CFG_TARGET_ENV").unwrap_or_default();
+
+    // Validate the target is supported.
+    match target_os.as_str() {
+        "linux" | "macos" => {}
+        "windows" if target_env == "gnu" => {}
+        "windows" => {
+            panic!(
+                "ERROR: Only the `gnu` target environment is supported on Windows.\n\
+                 Use `--target x86_64-pc-windows-gnu` (or install the corresponding rustup target)."
+            );
+        }
+        other => {
+            panic!(
+                "ERROR: Unsupported target OS `{other}`. Supported: linux, macos, windows (gnu)."
+            );
+        }
+    }
+
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
 
@@ -22,23 +42,28 @@ fn main() {
 
     let lib_path = out_dir.join("libtsgo.a");
 
-    let status = Command::new("go")
+    let mut go_build = Command::new("go");
+    go_build
         .arg("build")
         .arg("-buildmode=c-archive")
         .arg("-o")
         .arg(&lib_path)
         .arg("./cmd/libtsgo")
         .current_dir(go_root)
-        .env("CGO_ENABLED", "1")
-        .status()
-        .expect("failed to run `go build`");
+        .env("CGO_ENABLED", "1");
+
+    // // On windows-gnu, ensure cgo uses GCC (not MSVC or clang).
+    // if target_os == "windows" {
+    //     go_build.env("CC", "gcc");
+    // }
+
+    let status = go_build.status().expect("failed to run `go build`");
     assert!(status.success(), "`go build -buildmode=c-archive` failed");
 
     println!("cargo:rustc-link-search=native={}", out_dir.display());
     println!("cargo:rustc-link-lib=static=tsgo");
 
     // Platform-specific system libraries required by the Go runtime.
-    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
     match target_os.as_str() {
         "linux" => {
             println!("cargo:rustc-link-lib=dylib=pthread");
@@ -52,7 +77,13 @@ fn main() {
             println!("cargo:rustc-link-lib=dylib=m");
             println!("cargo:rustc-link-lib=dylib=resolv");
         }
-        _ => {}
+        "windows" => {
+            println!("cargo:rustc-link-lib=dylib=ntdll");
+            println!("cargo:rustc-link-lib=dylib=ws2_32");
+            println!("cargo:rustc-link-lib=dylib=winmm");
+            println!("cargo:rustc-link-lib=dylib=userenv");
+        }
+        _ => panic!("ERROR: No system libraries configured for target OS `{target_os}`."),
     }
 
     println!("cargo:rerun-if-changed=cmd/libtsgo/main.go");

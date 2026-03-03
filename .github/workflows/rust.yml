@@ -22,6 +22,8 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
+          - os: windows-latest
+            target: x86_64-pc-windows-gnu
           - os: macos-latest
 
     runs-on: ${{ matrix.os }}
@@ -34,13 +36,15 @@ jobs:
           go-version-file: go.mod
 
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target || '' }}
 
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
 
       - name: Build
-        run: cargo build
+        run: cargo build ${{ matrix.target && format('--target {0}', matrix.target) || '' }}
 
       - name: Test
-        run: cargo test
+        run: cargo test ${{ matrix.target && format('--target {0}', matrix.target) || '' }}
