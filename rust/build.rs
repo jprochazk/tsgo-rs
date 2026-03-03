@@ -17,7 +17,9 @@ fn main() {
             );
         }
         other => {
-            panic!("ERROR: Unsupported target OS `{other}`. Supported: linux, macos, windows (gnu).");
+            panic!(
+                "ERROR: Unsupported target OS `{other}`. Supported: linux, macos, windows (gnu)."
+            );
         }
     }
 
@@ -50,10 +52,10 @@ fn main() {
         .current_dir(go_root)
         .env("CGO_ENABLED", "1");
 
-    // On windows-gnu, ensure cgo uses GCC (not MSVC or clang).
-    if target_os == "windows" {
-        go_build.env("CC", "gcc");
-    }
+    // // On windows-gnu, ensure cgo uses GCC (not MSVC or clang).
+    // if target_os == "windows" {
+    //     go_build.env("CC", "gcc");
+    // }
 
     let status = go_build.status().expect("failed to run `go build`");
     assert!(status.success(), "`go build -buildmode=c-archive` failed");
